@@ -87,18 +87,14 @@ static struct {
 
 #pragma mark - Initialization
 
-static vm_map_t cur_task_map = 0;
 
 bool InitRuntimeSymPatch() {
 	
 	#ifdef KERNEL
-		if (_kernel_map) cur_task_map = kernel_map;
 		void* base = (void*)kernel_text_base;
 	#else
-		cur_task_map = mach_task_self();
 		void* base = baseAddress();
 	#endif
-	if (!cur_task_map) { CLOG("no task_map"); return false; }
 	if (!base) { CLOG("no baseAddress"); return false; }
 	
 	bool success = false;
@@ -126,9 +122,9 @@ bool unprotectRegion(void* region_address) {
     uint32_t depth = 0;
     struct vm_region_submap_info_64 regionInfo;
 	mach_msg_type_number_t regionInfoCount = VM_REGION_SUBMAP_INFO_COUNT_64;
-	kern_return_t kr = mach_vm_region_recurse(cur_task_map, &region_addr, &region_size, &depth, (vm_region_recurse_info_64_t)&regionInfo, &regionInfoCount);
+	kern_return_t kr = mach_vm_region_recurse(mach_task_self(), &region_addr, &region_size, &depth, (vm_region_recurse_info_64_t)&regionInfo, &regionInfoCount);
 
-	kr = mach_vm_protect(cur_task_map, region_addr, region_size, false, VM_PROT_DEFAULT | VM_PROT_COPY);
+	kr = mach_vm_protect(mach_task_self(), region_addr, region_size, false, VM_PROT_DEFAULT | VM_PROT_COPY);
 	return kr == KERN_SUCCESS;
 }
 void* baseAddress() {
@@ -137,7 +133,7 @@ void* baseAddress() {
     uint32_t depth = 0;
     struct vm_region_submap_info_64 info;
 	mach_msg_type_number_t info_count = VM_REGION_SUBMAP_INFO_COUNT_64;
-	mach_vm_region_recurse(cur_task_map, &vmoffset, &vmsize, &depth, (vm_region_recurse_info_64_t)&info, &info_count);
+	mach_vm_region_recurse(mach_task_self(), &vmoffset, &vmsize, &depth, (vm_region_recurse_info_64_t)&info, &info_count);
 	return (void*)vmoffset;
 }
 #endif
